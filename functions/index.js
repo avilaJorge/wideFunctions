@@ -198,7 +198,7 @@ app.use(cookieParser);
 app.post('/auth/user', createUser);
 app.use(validateFirebaseIdToken);
 // Get User
-app.get('/auth/:uid', getUser);
+app.get('/auth/user/:uid', getUser);
 // Get Users in Group
 app.get('/auth/users/:group', getUsersInGroup);
 // Create a log entry
