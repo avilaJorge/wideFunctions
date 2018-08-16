@@ -41,13 +41,11 @@ class User {
 }
 
 class StepLog {
-    constructor(name, date, steps, description, goal, weekGoal) {
-        this.name = name;
+    constructor(date, steps, description, goal) {
         this.date = date;
         this.steps = steps;
         this.description = description;
         this.goal = goal;
-        this.weekGoal = weekGoal;
     }
 }
 
@@ -114,14 +112,11 @@ const createUser = (req, res, next) => {
 };
 
 const postStepLog = (req, res, next) => {
-    req.body = JSON.parse(req.body);
     const log = new StepLog(
-        req.body.name,
         req.body.date,
         req.body.steps,
         req.body.description,
-        req.body.goal,
-        req.body.weekGoal
+        req.body.goal
     );
     admin.database().ref('/step-logs/' + req.params.uid + '/' + req.params.date).set(log)
         .then(() => {
