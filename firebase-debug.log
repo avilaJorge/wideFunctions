@@ -1,0 +1,27 @@
+[debug] [2018-08-28T04:12:17.736Z] ----------------------------------------------------------------------
+[debug] [2018-08-28T04:12:17.738Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\avila\AppData\Roaming\npm\node_modules\firebase-tools\bin\firebase serve --only functions
+[debug] [2018-08-28T04:12:17.738Z] CLI Version:   4.2.0
+[debug] [2018-08-28T04:12:17.738Z] Platform:      win32
+[debug] [2018-08-28T04:12:17.738Z] Node Version:  v8.11.3
+[debug] [2018-08-28T04:12:17.739Z] Time:          Mon Aug 27 2018 21:12:17 GMT-0700 (Pacific Daylight Time)
+[debug] [2018-08-28T04:12:17.739Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2018-08-28T04:12:17.749Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2018-08-28T04:12:17.749Z] > authorizing via signed-in user
+[debug] [2018-08-28T04:12:17.751Z] >>> HTTP REQUEST GET https://admin.firebase.com/v1/projects/wide-app  
+ 
+[debug] [2018-08-28T04:12:18.236Z] <<< HTTP RESPONSE 200
+[debug] [2018-08-28T04:12:18.237Z] >>> HTTP REQUEST GET https://cloudresourcemanager.googleapis.com/v1/projects/wide-app  
+ 
+[debug] [2018-08-28T04:12:18.652Z] <<< HTTP RESPONSE 200
+[info] 
+[info] === Serving from 'C:\Users\avila\Documents\Firebase_Functions\wideFunctions'...
+[info] 
+[info] i  functions: Preparing to emulate functions.
+[debug] [2018-08-28T04:12:19.360Z] Fetching environment
+[debug] [2018-08-28T04:12:19.362Z] >>> HTTP REQUEST GET https://mobilesdk-pa.googleapis.com/v1/projects/1037117039704:getServerAppConfig  
+ 
+[debug] [2018-08-28T04:12:19.752Z] <<< HTTP RESPONSE 200
+[debug] [2018-08-28T04:12:19.753Z] Starting @google-cloud/functions-emulator
+[debug] [2018-08-28T04:12:21.818Z] Parsing function triggers
+[info] +  functions: app: http://localhost:5000/wide-app/us-central1/app

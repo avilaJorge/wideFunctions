@@ -24,6 +24,11 @@ const express = require('express');
 const cookieParser = require('cookie-parser')();
 const cors = require('cors')({origin: true});
 const app = express();
+const request = require('request');
+const fs = admin.firestore();
+const settings = {timestampsInSnapshots: true};
+fs.settings(settings);
+const meetupAPIEnd =  'https://api.meetup.com/';
 
 class User {
     constructor(googleUID, userName, photoURL, email, authExpires, groupName) {
@@ -183,14 +188,98 @@ const getUsersInGroup = (req, res, next) => {
     });
 }
 
+const integrateMeetup = (req, res, next) => {
+    console.log(req.query);
+    console.log(req.headers);
+    res.send(`<h4>Please close this browser window now.</h4>`);
+    if (!req.query.error) {
+        const endpoint = 'https://secure.meetup.com/oauth2/access?';
+        const userId = req.query.state;
+        const client_id = '&client_id=22lh8rm9tair7fn49qco8n3j1c';
+        const client_secret = '&client_secret=cbc07j336l0r1c48senntuci9o';
+        const grant_type = '&grant_type=authorization_code';
+        // const redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
+        const redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
+        const code = '&code=' + req.query.code;
+        const opts = {
+            uri: endpoint + client_id + client_secret + grant_type + redirect_uri + code,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        };
+        const userDoc = fs.doc(`users/${userId}`);
+        userDoc.get().then((doc) => {
+            console.log(doc);
+            return;
+        }).catch((err) => {
+            console.log(err);
+            return;
+        });
+
+        request(opts, (error, response) => {
+            console.log(error,response.body);
+            console.log(response.body.access_token);
+            console.log(userId);
+            console.log(response.headers);
+            const respData = JSON.parse(response.body);
+            console.log(respData);
+            const exp = new Date(Date.now() + respData.expires_in).getTime();
+            const newUserData = {
+                meetupAccessToken: respData.access_token,
+                isMeetupAuthenticated: true,
+                meetupRefreshToken: respData.refresh_token,
+                meetupTokenExpiresIn: respData.expires_in,
+                meetupTokenType: respData.token_type,
+                meetupTokenExpirationDate: exp
+            };
+            console.log(newUserData);
+            userDoc.update(newUserData).then((doc) => {
+              console.log(doc);
+              return;
+            }).catch((err) => {
+                console.log(err);
+                return;
+            });
+        });
+    } else {
+        res.send(req.query.error);
+        return;
+    }
+}
+
+const rsvpForEvent = (req, res, next) => {
+    console.log(req.headers);
+    console.log(req.query);
+    const endpoint = meetupAPIEnd + req.query.group + '/events/' + req.query.eventId + '/rsvps?response=' + req.query.response;
+    const opts = {
+        uri: endpoint,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.query.authorization
+        }
+    };
+    request(opts, (error, response) => {
+        console.log(error,response.body);
+        console.log(response.headers);
+        res.send(response);
+        return;
+    });
+};
+
 app.get('/skip-auth', (req, res) => {
     res.send(`Hello there!  This works okay!`);
 });
 // Verify Authentication
 app.use(cors);
 app.use(cookieParser);
+// Integrate Meetup for User
+app.get('/auth/meetup', integrateMeetup);
 // Create a user
 app.post('/auth/user', createUser);
+// RSVP for an event
+app.get('/meetup/rsvp', rsvpForEvent);
 app.use(validateFirebaseIdToken);
 // Get User
 app.get('/auth/user/:uid', getUser);
