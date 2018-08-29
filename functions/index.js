@@ -264,7 +264,122 @@ const rsvpForEvent = (req, res, next) => {
         console.log(error,response.body);
         console.log(response.headers);
         res.send(response);
-        return;
+    });
+};
+
+const getAuthEvents = (req, res, next) => {
+    console.log(req.headers);
+    console.log(req.query);
+    const params = '?photo-host=public&page=20&fields=description_images,' +
+        'featured_photo,group_key_photo,how_to_find_us,rsvp_sample,self';
+    const endpoint = meetupAPIEnd + req.query.group + '/events' + params;
+    console.log(endpoint);
+    const opts = {
+        uri: endpoint,
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.query.authorization
+        }
+    };
+    request(opts, (error, response) => {
+        console.log(error, response.body);
+        console.log(response.headers);
+        res.send(response);
+    });
+};
+
+const getEventComments = (req, res, next) => {
+    console.log(req.headers);
+    console.log(req.query);
+    const params = '?photo-host=public&page=20';
+    const endpoint = meetupAPIEnd + req.query.group + '/events/' + req.query.eventId + '/comments' + params;
+    console.log(endpoint);
+    const opts = {
+        uri: endpoint,
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.query.authorization
+        }
+    };
+    request(opts, (error, response) => {
+        console.log(error, response.body);
+        console.log(response.headers);
+        res.send(response);
+    });
+};
+
+const getSelfProfile = (req, res, next) => {
+    console.log(req.headers);
+    console.log(req.query);
+    const endpoint = meetupAPIEnd + 'members/self?photo-host=public';
+    console.log(endpoint);
+    const opts = {
+        uri: endpoint,
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.query.authorization
+        }
+    };
+    request(opts, (error, response) => {
+        console.log(error, response.body);
+        console.log(response.headers);
+        res.send(response);
+    });
+};
+
+const postComment = (req, res, next) => {
+    console.log(req.headers);
+    console.log(req.query);
+    console.log(req.body);
+    let body = {
+        comment: req.body.comment,
+        notifications: false
+    };
+    let params = '?comment=' + req.body.comment + '&notifications=false';
+    if (req.body.in_reply_to) {
+        body.in_reply_to = req.body.in_reply_to;
+        params += '&in_reply_to=' + req.body.in_reply_to;
+    }
+    console.log(body);
+    const endpoint = meetupAPIEnd + req.body.group + '/events/' + req.body.eventId + '/comments' + params;
+    console.log(endpoint);
+    const opts = {
+        uri: endpoint,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.query.authorization
+        }
+    };
+    console.log(opts);
+    request(opts, (error, response) => {
+        console.log(error, response.body);
+        console.log(response.headers);
+        res.send(response);
+    });
+};
+
+const getRSVPList = (req, res, next) => {
+    console.log(req.headers);
+    console.log(req.query);
+    const params = '?photo-host=public&omit=group,venue,event';
+    const endpoint = meetupAPIEnd + req.query.group + '/events/' + req.query.eventId + '/rsvps' + params;
+    console.log(endpoint);
+    const opts = {
+        uri: endpoint,
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.query.authorization
+        }
+    };
+    request(opts, (error, response) => {
+        console.log(error, response.body);
+        console.log(response.headers);
+        res.send(response);
     });
 };
 
@@ -280,6 +395,16 @@ app.get('/auth/meetup', integrateMeetup);
 app.post('/auth/user', createUser);
 // RSVP for an event
 app.get('/meetup/rsvp', rsvpForEvent);
+// Get RSVP List
+app.get('/meetup/rsvp/list', getRSVPList);
+// Get authenticated events with user rsvps
+app.get('/meetup/events', getAuthEvents);
+// Get comments for a particular event.
+app.get('/meetup/event/comments', getEventComments);
+// Post a new comment
+app.post('/meetup/event/comment', postComment);
+// Get the profile for self
+app.get('/meetup/profile/self', getSelfProfile);
 app.use(validateFirebaseIdToken);
 // Get User
 app.get('/auth/user/:uid', getUser);
