@@ -198,8 +198,8 @@ const integrateMeetup = (req, res, next) => {
         const client_id = '&client_id=22lh8rm9tair7fn49qco8n3j1c';
         const client_secret = '&client_secret=cbc07j336l0r1c48senntuci9o';
         const grant_type = '&grant_type=authorization_code';
-        // const redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
-        const redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
+        const redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
+        // const redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
         const code = '&code=' + req.query.code;
         const opts = {
             uri: endpoint + client_id + client_secret + grant_type + redirect_uri + code,
