@@ -313,7 +313,8 @@ const getEventComments = (req, res, next) => {
 const getProfile = (req, res, next) => {
     console.log(req.headers);
     console.log(req.query);
-    const endpoint = meetupAPIEnd + 'members/' + req.query.memberId + '?photo-host=public';
+    const params = '?photo-host=public&fields=privacy,stats,topics,memberships';
+    const endpoint = meetupAPIEnd + req.query.group + '/members/' + req.query.memberId + params;
     console.log(endpoint);
     const opts = {
         uri: endpoint,
