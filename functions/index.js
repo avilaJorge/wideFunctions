@@ -271,7 +271,7 @@ const getAuthEvents = (req, res, next) => {
     console.log(req.headers);
     console.log(req.query);
     const params = '?photo-host=public&page=20&fields=description_images,' +
-        'featured_photo,group_key_photo,how_to_find_us,rsvp_sample,self';
+        'featured_photo,group_key_photo,how_to_find_us,self'; // rsvp_sample
     const endpoint = meetupAPIEnd + req.query.group + '/events' + params;
     console.log(endpoint);
     const opts = {
@@ -310,10 +310,10 @@ const getEventComments = (req, res, next) => {
     });
 };
 
-const getSelfProfile = (req, res, next) => {
+const getProfile = (req, res, next) => {
     console.log(req.headers);
     console.log(req.query);
-    const endpoint = meetupAPIEnd + 'members/self?photo-host=public';
+    const endpoint = meetupAPIEnd + 'members/' + req.query.memberId + '?photo-host=public';
     console.log(endpoint);
     const opts = {
         uri: endpoint,
@@ -404,7 +404,7 @@ app.get('/meetup/event/comments', getEventComments);
 // Post a new comment
 app.post('/meetup/event/comment', postComment);
 // Get the profile for self
-app.get('/meetup/profile/self', getSelfProfile);
+app.get('/meetup/profile', getProfile);
 app.use(validateFirebaseIdToken);
 // Get User
 app.get('/auth/user/:uid', getUser);
