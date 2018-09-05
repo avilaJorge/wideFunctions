@@ -17,18 +17,35 @@
  */
 'use strict';
 
+
+
+
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-admin.initializeApp();
+const serviceAccount = require("./wide-app-firebase-adminsdk-1byzh-698465bea8.json");
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: "wide-app.appspot.com"
+});
 const express = require('express');
 const cookieParser = require('cookie-parser')();
 const cors = require('cors')({origin: true});
 const app = express();
 const request = require('request');
-const fs = admin.firestore();
+const firestore = admin.firestore();
 const settings = {timestampsInSnapshots: true};
-fs.settings(settings);
+firestore.settings(settings);
+const fs = require('fs');
+
+// Meetup Constants
 const meetupAPIEnd =  'https://api.meetup.com/';
+
+// UA Constants
+var uaClientCredentialsAccessToken = 0;
+var uaCCAccessTokenExpires = 0;
+const uaAPIEnd = 'https://api.ua.com/v7.1/';
+const uaClientID = 'cuoxcst2q4yxbyutptpokm6rttklhozx';
+const uaClientSecret = '33jpvlvmlhmjstwfmhcrsf7mp3c67uvepfsj27msovmaxb54trfgd34lkwzyxd7x';
 
 class User {
     constructor(googleUID, userName, photoURL, email, authExpires, groupName) {
@@ -198,8 +215,8 @@ const integrateMeetup = (req, res, next) => {
         const client_id = '&client_id=22lh8rm9tair7fn49qco8n3j1c';
         const client_secret = '&client_secret=cbc07j336l0r1c48senntuci9o';
         const grant_type = '&grant_type=authorization_code';
-        const redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
-        // const redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
+        // const redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
+        const redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
         const code = '&code=' + req.query.code;
         const opts = {
             uri: endpoint + client_id + client_secret + grant_type + redirect_uri + code,
@@ -208,7 +225,7 @@ const integrateMeetup = (req, res, next) => {
                 'Content-Type': 'application/json'
             }
         };
-        const userDoc = fs.doc(`users/${userId}`);
+        const userDoc = firestore.doc(`users/${userId}`);
         userDoc.get().then((doc) => {
             console.log(doc);
             return;
@@ -384,6 +401,96 @@ const getRSVPList = (req, res, next) => {
     });
 };
 
+const updateClientCredentials = (req, res, next) => {
+    console.log(uaClientCredentialsAccessToken);
+    console.log(uaCCAccessTokenExpires);
+    if (Date.now() > uaCCAccessTokenExpires) {
+        const formData = {
+            grant_type: 'client_credentials',
+            client_id: uaClientID,
+            client_secret: uaClientSecret
+        };
+        const endpoint = uaAPIEnd + 'oauth2/access_token';
+        const opts = {
+            uri: endpoint,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            formData: formData
+        };
+        request(opts, (error, response) => {
+            console.log(error, response.body);
+            if (error) {
+                res.status(403).send('An error occured at UA Api');
+                return;
+            }
+            const data = JSON.parse(response.body);
+            uaCCAccessTokenExpires = Date.now() + data.expires_in;
+            uaClientCredentialsAccessToken = data.access_token;
+            return next();
+        });
+    } else {
+        return next();
+    }
+};
+
+const getUARoutes = (req, res, next) => {
+    console.log(req.headers);
+    console.log(req.query);
+    req.query.location = '32.87395225,-117.22725327337258';
+    const params = '?close_to_location=' + req.query.location + '&order_by=distance_from_point&text_search=walk';
+    const endpoint = uaAPIEnd + 'route/' + params;
+    const opts = {
+        uri: endpoint,
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + uaClientCredentialsAccessToken
+        }
+    };
+    console.log(new Date(uaCCAccessTokenExpires));
+    console.log(uaClientCredentialsAccessToken);
+    request(opts, (error, response) => {
+        console.log(error, response.body);
+        console.log(response.headers);
+        res.send(response);
+    });
+};
+
+const getKMLFile = (req, res, next) => {
+    const params = '?format=kml&field_set=detailed';
+    const endpoint = uaAPIEnd + 'route/' + req.query.id + '/' + params;
+    var bucket = admin.storage().bucket();
+    const fileName = req.query.id + '.kml';
+    const opts = {
+        uri: endpoint,
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + uaClientCredentialsAccessToken
+        }
+    };
+    console.log('Printing id: ' + req.query.id);
+    request(opts, (error, response) => {
+        console.log(error, response.body);
+        fs.writeFile(fileName, response.body, (err) => {
+            if (err) {
+                console.log(err);
+                throw err;
+            }
+            console.log('Saved File!!!');
+            bucket.upload('./' + fileName).then(() => {
+                console.log('Seemed to have made it in here!');
+                fs.unlink(fileName);
+                res.send(fileName);
+                return;
+            }).catch((err) => {
+                console.log('ERROR: ', err);
+            });
+        });
+    });
+};
+
 app.get('/skip-auth', (req, res) => {
     res.send(`Hello there!  This works okay!`);
 });
@@ -406,6 +513,13 @@ app.get('/meetup/event/comments', getEventComments);
 app.post('/meetup/event/comment', postComment);
 // Get the profile for self
 app.get('/meetup/profile', getProfile);
+// Get UA API client credentials
+app.use(updateClientCredentials);
+// Get UA Routes
+app.get('/ua/routes', getUARoutes);
+// Get KML file
+app.get('/ua/route/kml', getKMLFile);
+
 app.use(validateFirebaseIdToken);
 // Get User
 app.get('/auth/user/:uid', getUser);
