@@ -1,3 +1,4 @@
+/* eslint-disable promise/always-return */
 /**
  * Copyright 2016 Google Inc. All Rights Reserved.
  *
@@ -22,20 +23,20 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const serviceAccount = require("./wide-app-firebase-adminsdk-1byzh-698465bea8.json");
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    storageBucket: "wide-app.appspot.com"
-});
+admin.initializeApp(functions.config().firebase);
 const express = require('express');
 const cookieParser = require('cookie-parser')();
 const cors = require('cors')({origin: true});
 const app = express();
 const request = require('request');
+const rp = require('request-promise-native');
 const firestore = admin.firestore();
 const settings = {timestampsInSnapshots: true};
+const bucket = admin.storage().bucket();
 firestore.settings(settings);
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 // Meetup Constants
 const meetupAPIEnd =  'https://api.meetup.com/';
@@ -449,19 +450,15 @@ const getUARoutes = (req, res, next) => {
             'Authorization': 'Bearer ' + uaClientCredentialsAccessToken
         }
     };
-    console.log(new Date(uaCCAccessTokenExpires));
-    console.log(uaClientCredentialsAccessToken);
     request(opts, (error, response) => {
-        console.log(error, response.body);
-        console.log(response.headers);
         res.send(response);
     });
 };
 
 const getKMLFile = (req, res, next) => {
+    console.log(req.body);
     const params = '?format=kml&field_set=detailed';
     const endpoint = uaAPIEnd + 'route/' + req.query.id + '/' + params;
-    var bucket = admin.storage().bucket();
     const fileName = req.query.id + '.kml';
     const opts = {
         uri: endpoint,
@@ -470,25 +467,60 @@ const getKMLFile = (req, res, next) => {
             'Authorization': 'Bearer ' + uaClientCredentialsAccessToken
         }
     };
-    console.log('Printing id: ' + req.query.id);
-    request(opts, (error, response) => {
-        console.log(error, response.body);
-        fs.writeFile(fileName, response.body, (err) => {
-            if (err) {
-                console.log(err);
-                throw err;
-            }
-            console.log('Saved File!!!');
-            bucket.upload('./' + fileName).then(() => {
-                console.log('Seemed to have made it in here!');
-                fs.unlink(fileName);
-                res.send(fileName);
-                return;
-            }).catch((err) => {
-                console.log('ERROR: ', err);
+    req.body.filename = fileName;
+    const tempFilePath = path.join(os.tmpdir(), fileName);
+    return rp(opts).then((response) => {
+        console.log(response);
+        return new Promise((resolve,reject) => {
+            fs.writeFile(tempFilePath, response, (err) => {
+                if (err) reject(err);
+                else resolve();
             });
         });
-    });
+    }).then(() => {
+        console.log('Does the file exist yet?');
+        console.log(fs.existsSync(tempFilePath));
+        const options = {
+            resumable: false,
+            public: true,
+            metadata: {route_id: req.query.id},
+            destination: 'routes/' + fileName
+        };
+        return bucket.upload(tempFilePath, options);
+    }).then((data) => {
+        console.log(data);
+        fs.unlinkSync(tempFilePath);
+        res.send(data);
+    }).catch((err) => {console.log(err)});
+};
+
+const createKMLFile = (req, res, next) => {
+    let filename = req.body.filename;
+    fs.writeFileSync(filename, req.body.data);
+    console.log('Saved file!');
+    return next();
+    // fs.writeFile(filename, req.body.data, (err) => {
+    //     if (err) {
+    //         console.log('ERROR: inside getKMLFile');
+    //         console.log(err);
+    //         res.status(401).json({message: "An error occured while saving the file"});
+    //         throw err;
+    //     }
+    //     console.log('Saved File!!!');
+    //     return next();
+    // });
+};
+
+const storeKMLFile = (req, res, next) => {
+    console.log('Does the file exist yet?');
+    console.log(fs.existsSync(req.body.filename));
+    let filename = req.body.filename;
+    console.log('./' + filename);
+    return bucket.upload('./' + filename).then((data) => {
+        console.log(data);
+        fs.unlinkSync('./' + filename);
+        return res.send(data);
+    }).catch((err) => {console.log(err)});
 };
 
 app.get('/skip-auth', (req, res) => {
