@@ -439,7 +439,6 @@ const updateClientCredentials = (req, res, next) => {
 const getUARoutes = (req, res, next) => {
     console.log(req.headers);
     console.log(req.query);
-    req.query.location = '32.87395225,-117.22725327337258';
     const params = '?close_to_location=' + req.query.location + '&order_by=distance_from_point&text_search=walk&field_set=detailed';
     const endpoint = uaAPIEnd + 'route/' + params;
     const opts = {
@@ -478,7 +477,7 @@ const getKMLFile = (req, res, next) => {
         } else {
             console.log('DEBUG: This file does not exist yet, will be created!');
             // console.log(req.body);
-            const params = '?format=kml&field_set=detailed';
+            const params = '?format=kml&field_set=detailed&marker_unit=mile&show_marker_every=1';
             const endpoint = uaAPIEnd + 'route/' + req.query.id + '/' + params;
             const opts = {
                 uri: endpoint,
