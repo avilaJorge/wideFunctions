@@ -440,7 +440,7 @@ const getUARoutes = (req, res, next) => {
     console.log(req.headers);
     console.log(req.query);
     req.query.location = '32.87395225,-117.22725327337258';
-    const params = '?close_to_location=' + req.query.location + '&order_by=distance_from_point&text_search=walk';
+    const params = '?close_to_location=' + req.query.location + '&order_by=distance_from_point&text_search=walk&field_set=detailed';
     const endpoint = uaAPIEnd + 'route/' + params;
     const opts = {
         uri: endpoint,
@@ -456,42 +456,68 @@ const getUARoutes = (req, res, next) => {
 };
 
 const getKMLFile = (req, res, next) => {
-    console.log(req.body);
-    const params = '?format=kml&field_set=detailed';
-    const endpoint = uaAPIEnd + 'route/' + req.query.id + '/' + params;
+
     const fileName = req.query.id + '.kml';
-    const opts = {
-        uri: endpoint,
-        method: 'GET',
-        headers: {
-            'Authorization': 'Bearer ' + uaClientCredentialsAccessToken
-        }
-    };
-    req.body.filename = fileName;
-    const tempFilePath = path.join(os.tmpdir(), fileName);
-    return rp(opts).then((response) => {
-        console.log(response);
-        return new Promise((resolve,reject) => {
-            fs.writeFile(tempFilePath, response, (err) => {
-                if (err) reject(err);
-                else resolve();
+    bucket.file('routes/' + fileName).exists().then((fileExists) => {
+        console.log(fileExists);
+        console.log("DEBUG: Does the file exist? " + fileExists);
+        if (fileExists[0]) {
+            console.log('This file does exist so we will just get the mediaLink for it!!!');
+            const config = {
+                action: 'read',
+                expires: Date.now() + (1000 * 60 * 60 * 24 * 5)
+            }
+            bucket.file('routes/' + fileName).getMetadata().then((data) => {
+                console.log('DEBUG: This file already exists!');
+                console.log(data);
+                res.send(data);
+            }).catch((err) => {
+                console.log(err);
+                throw err;
             });
-        });
-    }).then(() => {
-        console.log('Does the file exist yet?');
-        console.log(fs.existsSync(tempFilePath));
-        const options = {
-            resumable: false,
-            public: true,
-            metadata: {route_id: req.query.id},
-            destination: 'routes/' + fileName
-        };
-        return bucket.upload(tempFilePath, options);
-    }).then((data) => {
-        console.log(data);
-        fs.unlinkSync(tempFilePath);
-        res.send(data);
-    }).catch((err) => {console.log(err)});
+        } else {
+            console.log('DEBUG: This file does not exist yet, will be created!');
+            // console.log(req.body);
+            const params = '?format=kml&field_set=detailed';
+            const endpoint = uaAPIEnd + 'route/' + req.query.id + '/' + params;
+            const opts = {
+                uri: endpoint,
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + uaClientCredentialsAccessToken
+                }
+            };
+            req.body.filename = fileName;
+            const tempFilePath = path.join(os.tmpdir(), fileName);
+            return rp(opts).then((response) => {
+                // console.log(response);
+                return new Promise((resolve,reject) => {
+                    fs.writeFile(tempFilePath, response, (err) => {
+                        if (err) reject(err);
+                        else resolve();
+                    });
+                });
+            }).then(() => {
+                console.log('Does the file exist yet?');
+                console.log(fs.existsSync(tempFilePath));
+                const options = {
+                    resumable: false,
+                    public: true,
+                    metadata: { metadata: {route_id: req.query.id} },
+                    destination: 'routes/' + fileName
+                };
+                return bucket.upload(tempFilePath, options);
+            }).then((data) => {
+                console.log(data);
+                fs.unlinkSync(tempFilePath);
+                res.send(data);
+            }).catch((err) => {console.log(err)});
+        }
+    }).catch((err) => {
+        console.log('ERROR: A serious error occured!!!!');
+        console.log(err);
+        throw err;
+    });
 };
 
 const createKMLFile = (req, res, next) => {
