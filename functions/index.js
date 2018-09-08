@@ -45,6 +45,7 @@ const meetupAPIEnd =  'https://api.meetup.com/';
 var uaClientCredentialsAccessToken = 0;
 var uaCCAccessTokenExpires = 0;
 const uaAPIEnd = 'https://api.ua.com/v7.1/';
+const uaNextAPIEnd = 'https://api.ua.com'
 const uaClientID = 'cuoxcst2q4yxbyutptpokm6rttklhozx';
 const uaClientSecret = '33jpvlvmlhmjstwfmhcrsf7mp3c67uvepfsj27msovmaxb54trfgd34lkwzyxd7x';
 
@@ -454,6 +455,24 @@ const getUARoutes = (req, res, next) => {
     });
 };
 
+const getNextRoutes = (req, res, next) => {
+    console.log(req.headers);
+    console.log(req.query);
+    console.log(req.params);
+    const endpoint = uaNextAPIEnd + req.query.endpoint;
+    const opts = {
+        uri: endpoint,
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + uaClientCredentialsAccessToken
+        }
+    };
+    request(opts, (error, response) => {
+        res.send(response);
+    });
+};
+
 const getKMLFile = (req, res, next) => {
 
     const fileName = req.query.id + '.kml';
@@ -574,6 +593,8 @@ app.get('/meetup/profile', getProfile);
 app.use(updateClientCredentials);
 // Get UA Routes
 app.get('/ua/routes', getUARoutes);
+// Get Next UA Routes for Infinite Scroll Effect.
+app.get('/ua/routes/next', getNextRoutes);
 // Get KML file
 app.get('/ua/route/kml', getKMLFile);
 
