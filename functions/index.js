@@ -496,7 +496,7 @@ const getKMLFile = (req, res, next) => {
         } else {
             console.log('DEBUG: This file does not exist yet, will be created!');
             // console.log(req.body);
-            const params = '?format=kml&field_set=detailed&marker_unit=mile&show_marker_every=1';
+            const params = '?format=kml&field_set=detailed&line_color=ff0000ff&marker_unit=mile&show_marker_every=1';
             const endpoint = uaAPIEnd + 'route/' + req.query.id + '/' + params;
             const opts = {
                 uri: endpoint,
