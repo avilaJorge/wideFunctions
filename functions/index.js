@@ -20,26 +20,33 @@
 
 
 
-
+// Firebase and Admin SDK initialization
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
+
 const express = require('express');
 const cookieParser = require('cookie-parser')();
 const cors = require('cors')({origin: true});
 const app = express();
 const request = require('request');
 const rp = require('request-promise-native');
-const firestore = admin.firestore();
 const settings = {timestampsInSnapshots: true};
-const bucket = admin.storage().bucket();
-firestore.settings(settings);
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+// Firestore variables
+const firestore = admin.firestore();
+firestore.settings(settings);
+
+// Cloud Storage variables
+const bucket = admin.storage().bucket();
+
 // Meetup Constants
 const meetupAPIEnd =  'https://api.meetup.com/';
+// const meetup_redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
+const meetup_redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
 
 // UA Constants
 var uaClientCredentialsAccessToken = 0;
@@ -217,11 +224,9 @@ const integrateMeetup = (req, res, next) => {
         const client_id = '&client_id=22lh8rm9tair7fn49qco8n3j1c';
         const client_secret = '&client_secret=cbc07j336l0r1c48senntuci9o';
         const grant_type = '&grant_type=authorization_code';
-        // const redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
-        const redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
         const code = '&code=' + req.query.code;
         const opts = {
-            uri: endpoint + client_id + client_secret + grant_type + redirect_uri + code,
+            uri: endpoint + client_id + client_secret + grant_type + meetup_redirect_uri + code,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -301,12 +306,36 @@ const getAuthEvents = (req, res, next) => {
             'Authorization': req.query.authorization
         }
     };
+    let fs_ref = firestore.collection('meetups');
     request(opts, (error, response) => {
-        console.log(error, response.body);
+        console.log(error);
         console.log(response.headers);
         res.send(response);
+        const meetups = JSON.parse(response.body);
+        meetups.forEach((meetup) => {
+           storeMeetup(meetup, fs_ref);
+        });
     });
 };
+
+const storeMeetup = (meetup_data, ref) => {
+    let fs_data = {
+        id: meetup_data.id,
+        name: meetup_data.name,
+        status: meetup_data.status,
+        time: meetup_data.time,
+        duration: meetup_data.duration,
+        local_date: meetup_data.local_date,
+        local_time: meetup_data.local_time
+    };
+    ref.doc(fs_data.id).set(fs_data, {merge: true}).then((result) => {
+        console.log('Meetup ', fs_data.id, ' stored in Firestore');
+        console.log(result);
+    }).catch((err) => {
+        console.log(err);
+        throw err;
+    });
+}
 
 const getEventComments = (req, res, next) => {
     console.log(req.headers);
@@ -624,3 +653,37 @@ exports.app = functions.https.onRequest((req, res) => {
     return app(req, res);
 });
 
+exports.newMeetupNotification = functions.firestore
+    .document('meetups/{meetupId}')
+    .onCreate((snap, context) => {
+        const newMeetup = snap.data();
+        console.log(`INFO: New notification for ${newMeetup.name}!`);
+        const meetup_name = newMeetup.name;
+        // Notification Content
+        const payload = {
+            notification: {
+                title: 'New Walk Added to Meetup',
+                body: `${meetup_name} was added.`,
+                icon: 'https://cdn1.iconfinder.com/data/icons/saigon-attractions-map/40/map_014-walking-street-human-transport-512.png'
+            }
+        };
+
+        // ref to the parent doucment
+        const devicesRef = firestore.collection('devices');
+        return devicesRef.get().then((devices) => {
+            const tokens = [];
+
+            // Loop over documents to get device tokens
+            devices.forEach((result) => {
+                const token = result.data().token;
+                tokens.push(token);
+            });
+
+            // send the notifications
+            return admin.messaging().sendToDevice(tokens, payload);
+
+        }).catch((err) => {
+            console.log(err);
+            throw err;
+        });
+    });
