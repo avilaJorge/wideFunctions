@@ -45,8 +45,8 @@ const bucket = admin.storage().bucket();
 
 // Meetup Constants
 const meetupAPIEnd =  'https://api.meetup.com/';
-// const meetup_redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
-const meetup_redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
+const meetup_redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
+// const meetup_redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
 
 // UA Constants
 var uaClientCredentialsAccessToken = 0;
@@ -355,6 +355,64 @@ const getEventComments = (req, res, next) => {
             'Authorization': req.query.authorization
         }
     };
+    let fs_ref = firestore.collection('replies');
+    let batch = firestore.batch();
+    request(opts, (error, response) => {
+        console.log(error, response.body);
+        console.log(response.headers);
+        res.send(response);
+        const comments = JSON.parse(response.body);
+        comments.forEach((comment) => {
+            storeComment(comment, fs_ref, batch, req.query.event_name);
+        });
+        batch.commit().then((result_arr) => {
+            console.log('Successfully executed batch.');
+            console.log(result_arr);
+        }).catch((err) => {
+            console.log(err);
+            throw err;
+        });
+    });
+};
+
+// Function for storing comments that enable notifications
+const storeComment = (comment_data, ref, batch, event_name) => {
+    if (comment_data.replies) {
+        comment_data.replies.forEach((reply) => {
+            console.log(comment_data.id);
+            console.log(comment_data);
+            console.log(reply);
+            let data = {
+                id: reply.id,
+                event_name: event_name,
+                in_reply_to_id: reply.in_reply_to,
+                comment: reply.comment,
+                created: reply.created,
+                link: reply.link,
+                member_id: reply.member.id,
+                member_name: reply.member.name,
+                in_reply_to_member_id: comment_data.member.id,
+                in_reply_to_member_name: comment_data.member.name,
+            };
+            batch.set(ref.doc(String(reply.id)), data, {merge: true});
+        });
+    }
+};
+
+const getProfile = (req, res, next) => {
+    console.log(req.headers);
+    console.log(req.query);
+    const params = '?photo-host=public&fields=privacy,stats,topics,memberships';
+    const endpoint = meetupAPIEnd + req.query.group + '/members/' + req.query.memberId + params;
+    console.log(endpoint);
+    const opts = {
+        uri: endpoint,
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.query.authorization
+        }
+    };
     request(opts, (error, response) => {
         console.log(error, response.body);
         console.log(response.headers);
@@ -362,10 +420,10 @@ const getEventComments = (req, res, next) => {
     });
 };
 
-const getProfile = (req, res, next) => {
+const getMinProfile = (req, res, next) => {
     console.log(req.headers);
     console.log(req.query);
-    const params = '?photo-host=public&fields=privacy,stats,topics,memberships';
+    const params = '?photo-host=public&only=' + req.query.only;
     const endpoint = meetupAPIEnd + req.query.group + '/members/' + req.query.memberId + params;
     console.log(endpoint);
     const opts = {
@@ -622,6 +680,8 @@ app.get('/meetup/event/comments', getEventComments);
 app.post('/meetup/event/comment', postComment);
 // Get the profile for self
 app.get('/meetup/profile', getProfile);
+// Get the minimal profile for user
+app.get('/meetup/profile/minimal', getMinProfile);
 // Get UA API client credentials
 app.use(updateClientCredentials);
 // Get UA Routes
@@ -677,14 +737,56 @@ exports.newMeetupNotification = functions.firestore
         return devicesRef.get().then((devices) => {
             const tokens = [];
 
-            // Loop over documents to get device tokens
-            devices.forEach((result) => {
-                const token = result.data().token;
-                tokens.push(token);
-            });
+            if (!devices.empty) {
+                // Loop over documents to get device tokens
+                devices.forEach((result) => {
+                    const token = result.data().token;
+                    tokens.push(token);
+                });
 
-            // send the notifications
-            return admin.messaging().sendToDevice(tokens, payload);
+                // send the notifications
+                return admin.messaging().sendToDevice(tokens, payload);
+            } else {
+                console.log('No registered users need to be notified.');
+                return null;
+            }
+
+        }).catch((err) => {
+            console.log(err);
+            throw err;
+        });
+    });
+
+exports.commentReplyNotification = functions.firestore
+    .document('replies/{comment_id}')
+    .onCreate((snap, context) => {
+        const reply = snap.data();
+        console.log(`INFO: New notification for reply ${reply.in_reply_to_member_name}`);
+        const payload = {
+            notification: {
+                title: 'New Message',
+                body: `${reply.member_name} replied to your comment in ${reply.event_name}`,
+                icon: 'notification_icon'
+            }
+        };
+
+        const devicesRef = firestore.collection('devices').where('meetup_id', '==', reply.in_reply_to_member_id);
+        return devicesRef.get().then((devices) => {
+            const tokens = [];
+
+            if (!devices.empty) {
+                // Loop over documents to get device tokens (should only be one)
+                devices.forEach((result) => {
+                    const token = result.data().token;
+                    tokens.push(token);
+                });
+
+                // send the notifications
+                return admin.messaging().sendToDevice(tokens, payload);
+            } else {
+                console.log('No registered users need to be notified.');
+                return null;
+            }
 
         }).catch((err) => {
             console.log(err);
