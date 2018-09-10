@@ -383,6 +383,27 @@ const getProfile = (req, res, next) => {
     });
 };
 
+const getMinProfile = (req, res, next) => {
+    console.log(req.headers);
+    console.log(req.query);
+    const params = '?photo-host=public&only=' + req.query.only;
+    const endpoint = meetupAPIEnd + req.query.group + '/members/' + req.query.memberId + params;
+    console.log(endpoint);
+    const opts = {
+        uri: endpoint,
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.query.authorization
+        }
+    };
+    request(opts, (error, response) => {
+        console.log(error, response.body);
+        console.log(response.headers);
+        res.send(response);
+    });
+};
+
 const postComment = (req, res, next) => {
     console.log(req.headers);
     console.log(req.query);
@@ -622,6 +643,8 @@ app.get('/meetup/event/comments', getEventComments);
 app.post('/meetup/event/comment', postComment);
 // Get the profile for self
 app.get('/meetup/profile', getProfile);
+// Get the minimal profile for user
+app.get('/meetup/profile/minimal', getMinProfile);
 // Get UA API client credentials
 app.use(updateClientCredentials);
 // Get UA Routes
