@@ -317,16 +317,20 @@ const getAuthEvents = (req, res, next) => {
         });
     });
 };
-
+// Function for storing the short meetups list to Firestore
+// Below variables are used only in this function
+const date_options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+const time_options = { hour: 'numeric', minute: 'numeric' };
 const storeMeetup = (meetup_data, ref) => {
+    const date_obj = new Date(meetup_data.time);
     let fs_data = {
         id: meetup_data.id,
         name: meetup_data.name,
         status: meetup_data.status,
         time: meetup_data.time,
         duration: meetup_data.duration,
-        local_date: meetup_data.local_date,
-        local_time: meetup_data.local_time
+        date_str: date_obj.toLocaleString('en-US', date_options),
+        time_str: date_obj.toLocaleString('en-US', time_options)
     };
     ref.doc(fs_data.id).set(fs_data, {merge: true}).then((result) => {
         console.log('Meetup ', fs_data.id, ' stored in Firestore');
@@ -664,7 +668,7 @@ exports.newMeetupNotification = functions.firestore
             notification: {
                 title: 'New Walk Added to Meetup',
                 body: `${meetup_name} was added.`,
-                icon: 'https://cdn1.iconfinder.com/data/icons/saigon-attractions-map/40/map_014-walking-street-human-transport-512.png'
+                icon: 'notification_icon'
             }
         };
 
