@@ -1,3 +1,4 @@
+/* eslint-disable promise/always-return */
 /**
  * My Meetup API for interacting with the actual Meetup API
  */
@@ -9,8 +10,8 @@ const request = require('request');
 
 // Meetup Constants
 const meetupAPIEnd =  'https://api.meetup.com/';
-const meetup_redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
-// const meetup_redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
+// const meetup_integration_redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
+const meetup_integration_redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
 
 /** Private Functions **/
 // Function for storing comments that enable notifications
@@ -75,7 +76,7 @@ exports.integrateMeetup = (req, res, next) => {
         const grant_type = '&grant_type=authorization_code';
         const code = '&code=' + req.query.code;
         const opts = {
-            uri: endpoint + client_id + client_secret + grant_type + meetup_redirect_uri + code,
+            uri: endpoint + client_id + client_secret + grant_type + meetup_integration_redirect_uri + code,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

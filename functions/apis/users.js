@@ -6,6 +6,21 @@
  */
 'use strict';
 
+class User {
+    constructor(googleUID, userName, photoURL, email, authExpires, groupName) {
+        this.googleUID = googleUID;
+        this.userName = userName;
+        this.photoURL = photoURL;
+        this.email = email;
+        this.authExpires = authExpires;
+        this.groupName = groupName;
+        this.isMeetupAuthenticated = false;
+        this.meetupAuthToken = '';
+        this.isUAAuthenticated = false;
+        this.underArmourAuthToken = '';
+    }
+}
+
 const createUser = (req, res, next) => {
     console.log(req.body);
     const user = req.body;
