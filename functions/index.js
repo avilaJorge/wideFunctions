@@ -28,6 +28,8 @@ const meetupNotificationsModule = require('./notifications/meetup');
 const uaAPI = require('./apis/under-armour');
 /** (WIDE) Log imports **/
 const logNotificationsModule = require('./notifications/log');
+/** Fitbit imports **/
+const fitbitAPI = require('./apis/fitbit');
 /** Other imports **/
 const express = require('express');
 const cookieParser = require('cookie-parser')();
@@ -44,6 +46,8 @@ app.use(cookieParser);
 /** Meetup Routes **/
 // Integrate Meetup for User
 app.get('/auth/meetup', meetupAPI.integrateMeetup);
+// Integrate Fitbit for User
+app.get('/auth/fitbit', fitbitAPI.integrateFitbit);
 // RSVP for an event
 app.get('/meetup/rsvp', meetupAPI.rsvpForEvent);
 // Get RSVP List
