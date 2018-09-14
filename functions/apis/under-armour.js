@@ -20,13 +20,12 @@ const uaClientID = 'cuoxcst2q4yxbyutptpokm6rttklhozx';
 const uaClientSecret = '33jpvlvmlhmjstwfmhcrsf7mp3c67uvepfsj27msovmaxb54trfgd34lkwzyxd7x';
 
 exports.updateClientCredentials = (req, res, next) => {
-    console.log(uaClientCredentialsAccessToken);
-    console.log(uaCCAccessTokenExpires);
+    console.log("Checking Under Armour Access Token");
     if (Date.now() > uaCCAccessTokenExpires) {
         const formData = {
             grant_type: 'client_credentials',
             client_id: uaClientID,
-            client_secret: uaClientSecret
+            client_secret: uaClientSecret // TODO: Need to get rid of this!!
         };
         const endpoint = uaAPIEnd + 'oauth2/access_token';
         const opts = {
@@ -40,12 +39,13 @@ exports.updateClientCredentials = (req, res, next) => {
         request(opts, (error, response) => {
             console.log(error, response.body);
             if (error) {
-                res.status(403).send('An error occured at UA Api');
+                res.status(403).send({error: error});
                 return;
             }
             const data = JSON.parse(response.body);
             uaCCAccessTokenExpires = Date.now() + data.expires_in;
             uaClientCredentialsAccessToken = data.access_token;
+            console.log("Under Armour Client Credentials Token refreshed.");
             return next();
         });
     } else {
@@ -103,7 +103,6 @@ exports.getKMLFile = (req, res, next) => {
             }
             bucket.file('routes/' + fileName).getMetadata().then((data) => {
                 console.log('DEBUG: This file already exists!');
-                console.log(data);
                 res.send(data);
             }).catch((err) => {
                 console.log(err);
