@@ -28,6 +28,8 @@ const meetupNotificationsModule = require('./notifications/meetup');
 const uaAPI = require('./apis/under-armour');
 /** (WIDE) Log imports **/
 const logNotificationsModule = require('./notifications/log');
+/** Fitbit imports **/
+const fitbitAPI = require('./apis/fitbit');
 /** Other imports **/
 const express = require('express');
 const cookieParser = require('cookie-parser')();
@@ -60,14 +62,18 @@ app.get('/meetup/profile', meetupAPI.getProfile);
 app.get('/meetup/profile/minimal', meetupAPI.getMinProfile);
 
 /** Under Armour (MapMyWalk) Routes **/
-// Get UA API client credentials
-app.use(uaAPI.updateClientCredentials);
 // Get UA Routes
-app.get('/ua/routes', uaAPI.getUARoutes);
+app.get('/ua/routes', uaAPI.updateClientCredentials, uaAPI.getUARoutes);
 // Get Next UA Routes for Infinite Scroll Effect.
-app.get('/ua/routes/next', uaAPI.getNextRoutes);
+app.get('/ua/routes/next', uaAPI.updateClientCredentials, uaAPI.getNextRoutes);
 // Get KML file
-app.get('/ua/route/kml', uaAPI.getKMLFile);
+app.get('/ua/route/kml', uaAPI.updateClientCredentials, uaAPI.getKMLFile);
+
+/** Fitbit Routes **/
+// Integrate Fitbit for User
+app.get('/auth/fitbit', fitbitAPI.integrateFitbit);
+// Get steps for a particular date
+app.get('/fitbit/steps/:date', fitbitAPI.checkAccessToken, fitbitAPI.getSteps);
 
 // TODO: Need to move this to the top of the file and send this token when every call from the app
 app.use(fbTokenValidationModule.validateFirebaseIdToken);

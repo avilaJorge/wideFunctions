@@ -1,16 +1,18 @@
+/* eslint-disable promise/always-return */
 /**
  * My Meetup API for interacting with the actual Meetup API
  */
 'use strict';
 
-const {firestore} = require('../firebase-imports');
+const {functions, firestore} = require('../firebase-imports');
 const moment = require('moment');
 const request = require('request');
 
 // Meetup Constants
 const meetupAPIEnd =  'https://api.meetup.com/';
-const meetup_redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
-// const meetup_redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
+// const meetup_integration_redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
+const meetup_integration_redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
+const endpoint = 'https://secure.meetup.com/oauth2/access?';
 
 /** Private Functions **/
 // Function for storing comments that enable notifications
@@ -68,33 +70,21 @@ exports.integrateMeetup = (req, res, next) => {
     console.log(req.headers);
     res.send(`<h4>Please close this browser window now.</h4>`);
     if (!req.query.error) {
-        const endpoint = 'https://secure.meetup.com/oauth2/access?';
         const userId = req.query.state;
-        const client_id = '&client_id=22lh8rm9tair7fn49qco8n3j1c';
-        const client_secret = '&client_secret=cbc07j336l0r1c48senntuci9o';
+        const client_id = '&client_id=' + functions.config().meetup-config.client_id;
+        const client_secret = '&client_secret=' + functions.config().meetup-config.client_secret;
         const grant_type = '&grant_type=authorization_code';
         const code = '&code=' + req.query.code;
         const opts = {
-            uri: endpoint + client_id + client_secret + grant_type + meetup_redirect_uri + code,
+            uri: endpoint + client_id + client_secret + grant_type + meetup_integration_redirect_uri + code,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             }
         };
         const userDoc = firestore.doc(`users/${userId}`);
-        userDoc.get().then((doc) => {
-            console.log(doc);
-            return;
-        }).catch((err) => {
-            console.log(err);
-            return;
-        });
 
         request(opts, (error, response) => {
-            console.log(error,response.body);
-            console.log(response.body.access_token);
-            console.log(userId);
-            console.log(response.headers);
             const respData = JSON.parse(response.body);
             console.log(respData);
             const exp = new Date(Date.now() + respData.expires_in).getTime();
