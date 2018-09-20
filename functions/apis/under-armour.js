@@ -4,7 +4,7 @@
  */
 'use strict';
 
-const {bucket} = require('../firebase-imports');
+const {functions, bucket} = require('../firebase-imports');
 
 const request = require('request');
 const rp = require('request-promise-native');
@@ -16,8 +16,10 @@ let uaClientCredentialsAccessToken = 0;
 let uaCCAccessTokenExpires = 0;
 const uaAPIEnd = 'https://api.ua.com/v7.1/';
 const uaNextAPIEnd = 'https://api.ua.com';
-const uaClientID = 'cuoxcst2q4yxbyutptpokm6rttklhozx';
-const uaClientSecret = '33jpvlvmlhmjstwfmhcrsf7mp3c67uvepfsj27msovmaxb54trfgd34lkwzyxd7x';
+// const uaClientID = 'cuoxcst2q4yxbyutptpokm6rttklhozx';
+// const uaClientSecret = '33jpvlvmlhmjstwfmhcrsf7mp3c67uvepfsj27msovmaxb54trfgd34lkwzyxd7x';
+const uaClientID = functions.config().ua_config.client_id;
+const uaClientSecret = functions.config().ua_config.client_secret;
 
 exports.updateClientCredentials = (req, res, next) => {
     console.log("Checking Under Armour Access Token");
@@ -25,7 +27,7 @@ exports.updateClientCredentials = (req, res, next) => {
         const formData = {
             grant_type: 'client_credentials',
             client_id: uaClientID,
-            client_secret: uaClientSecret // TODO: Need to get rid of this!!
+            client_secret: uaClientSecret
         };
         const endpoint = uaAPIEnd + 'oauth2/access_token';
         const opts = {
