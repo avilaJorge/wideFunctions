@@ -13,6 +13,8 @@ const meetupAPIEnd =  'https://api.meetup.com/';
 // const meetup_integration_redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/meetup';
 const meetup_integration_redirect_uri = '&redirect_uri=http://localhost:5000/wide-app/us-central1/app/auth/meetup';
 const endpoint = 'https://secure.meetup.com/oauth2/access?';
+// const client_id = "22lh8rm9tair7fn49qco8n3j1c";
+// const client_secret = "cbc07j336l0r1c48senntuci9o";
 const client_id = functions.config()['meetup-config'].client_id;
 const client_secret = functions.config()['meetup-config'].client_secret;
 
