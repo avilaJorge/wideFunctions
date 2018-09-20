@@ -4,16 +4,64 @@
 'use strict';
 
 const {functions, firestore} = require('../firebase-imports');
-const request = require('request');
 const rp = require('request-promise-native');
 
-const client_id = "22CZGM";
-const client_secret = "5604c5b55933fad4146c877ce6ff8224";
+// const client_id = "22CZGM";
+// const client_secret = "5604c5b55933fad4146c877ce6ff8224";
+const client_id = functions.config()['fitbit-config'].client_id;
+const client_secret = functions.config()['fitbit-config'].client_secret;
 
-// const fitbit_integration_redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/fitbit';
-const fitbit_integration_redirect_uri = 'http://localhost:5000/wide-app/us-central1/app/auth/fitbit';
+const fitbit_integration_redirect_uri = '&redirect_uri=https://us-central1-wide-app.cloudfunctions.net/app/auth/fitbit';
+// const fitbit_integration_redirect_uri = 'http://localhost:5000/wide-app/us-central1/app/auth/fitbit';
 const access_token_endpoint = 'https://api.fitbit.com/oauth2/token';
 const fitbit_api_base_uri  = 'https://api.fitbit.com';
+
+exports.checkAccessToken = (req, res, next) => {
+    console.log(req.query);
+    console.log(req.headers);
+    console.log(req.params);
+    let userId = req.query.uid;
+    let expiration_date = parseInt(req.query.token_expires, 10);
+    req.query.new_access_token = false;
+    console.log('Checking if the Fitbit access token is expried');
+    if (Date.now() >= expiration_date) {
+        console.log('Fitbit access token is expired.  Will refresh this token.');
+        const reqOpts = {
+            uri: access_token_endpoint,
+            form: {
+                grant_type: 'refresh_token',
+                refresh_token: req.query.refresh_token,
+            },
+            method: 'POST',
+            headers: {
+                'Content-Type': 'Content-Type: application/x-www-form-urlencoded',
+                'Authorization': 'Basic ' + new Buffer(client_id + ':' + client_secret).toString('base64')
+            }
+        };
+        const userDoc = firestore.doc(`users/${userId}`);
+
+        rp(reqOpts).then((response) => {
+            const fitbit_grant = JSON.parse(response);
+            console.log(fitbit_grant);
+            req.query.authorization = 'Bearer ' + fitbit_grant.access_token;
+            req.query.new_access_token = true;
+            return userDoc.set({
+                    isFitbitAuthenticated: true,
+                    fitbit_token_expires: (fitbit_grant.expires_in*1000) + Date.now(),
+                    fitbit_access_data: fitbit_grant},
+                {merge: true});
+        }).then((writeResult) => {
+            console.log('Fitbit token successfully refreshed and data was stored in Firestore');
+            console.log(writeResult);
+            return next();
+        }).catch((error) => {
+            throw error;
+        });
+    } else {
+        return next();
+    }
+    return;
+};
 
 exports.integrateFitbit = (req, res, next) => {
     console.log(req.query);
@@ -25,7 +73,7 @@ exports.integrateFitbit = (req, res, next) => {
             uri: access_token_endpoint,
             form: {
                 code: req.query.code,
-                client_id: client_id, //functions.config().fitbit-config.client_id,
+                client_id: client_id,
                 grant_type: 'authorization_code',
                 redirect_uri: fitbit_integration_redirect_uri,
                 state: userId,
@@ -34,8 +82,6 @@ exports.integrateFitbit = (req, res, next) => {
             headers: {
                 'Content-Type': 'Content-Type: application/x-www-form-urlencoded',
                 'Authorization': 'Basic ' + new Buffer(client_id + ':' + client_secret).toString('base64')
-                // 'Authorization': 'Basic ' + new Buffer(functions.config().fitbit-config.client_id +
-                //     ':' + functions.config().fitbit-config.client_secret).toString('base64')
             }
         };
         const userDoc = firestore.doc(`users/${userId}`);
@@ -81,53 +127,4 @@ exports.getSteps = (req, res, next) => {
         res.status(403).send({error: error_response});
         throw err;
     });
-};
-
-exports.checkAccessToken = (req, res, next) => {
-    console.log(req.query);
-    console.log(req.headers);
-    console.log(req.params);
-    let userId = req.query.uid;
-    let expiration_date = parseInt(req.query.token_expires, 10);
-    req.query.new_access_token = false;
-    console.log('Checking if the Fitbit access token is expried');
-    if (Date.now() >= expiration_date) {
-        console.log('Fitbit access token is expired.  Will refresh this token.');
-        const reqOpts = {
-            uri: access_token_endpoint,
-            form: {
-                grant_type: 'refresh_token',
-                refresh_token: req.query.refresh_token,
-            },
-            method: 'POST',
-            headers: {
-                'Content-Type': 'Content-Type: application/x-www-form-urlencoded',
-                'Authorization': 'Basic ' + new Buffer(client_id + ':' + client_secret).toString('base64')
-                // 'Authorization': 'Basic ' + new Buffer(functions.config().fitbit-config.client_id +
-                //     ':' + functions.config().fitbit-config.client_secret).toString('base64')
-            }
-        };
-        const userDoc = firestore.doc(`users/${userId}`);
-
-        rp(reqOpts).then((response) => {
-            const fitbit_grant = JSON.parse(response);
-            console.log(fitbit_grant);
-            req.query.authorization = 'Bearer ' + fitbit_grant.access_token;
-            req.query.new_access_token = true;
-            return userDoc.set({
-                    isFitbitAuthenticated: true,
-                    fitbit_token_expires: (fitbit_grant.expires_in*1000) + Date.now(),
-                    fitbit_access_data: fitbit_grant},
-                {merge: true});
-        }).then((writeResult) => {
-            console.log('Fitbit token successfully refreshed and data was stored in Firestore');
-            console.log(writeResult);
-            return next();
-        }).catch((error) => {
-            throw error;
-        });
-    } else {
-        return next();
-    }
-    return;
 };

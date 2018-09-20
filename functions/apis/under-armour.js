@@ -15,7 +15,7 @@ const path = require('path');
 let uaClientCredentialsAccessToken = 0;
 let uaCCAccessTokenExpires = 0;
 const uaAPIEnd = 'https://api.ua.com/v7.1/';
-const uaNextAPIEnd = 'https://api.ua.com'
+const uaNextAPIEnd = 'https://api.ua.com';
 const uaClientID = 'cuoxcst2q4yxbyutptpokm6rttklhozx';
 const uaClientSecret = '33jpvlvmlhmjstwfmhcrsf7mp3c67uvepfsj27msovmaxb54trfgd34lkwzyxd7x';
 
@@ -100,7 +100,7 @@ exports.getKMLFile = (req, res, next) => {
             const config = {
                 action: 'read',
                 expires: Date.now() + (1000 * 60 * 60 * 24 * 5)
-            }
+            };
             bucket.file('routes/' + fileName).getMetadata().then((data) => {
                 console.log('DEBUG: This file already exists!');
                 res.send(data);
